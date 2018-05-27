@@ -75,8 +75,8 @@ int main()
 	theLCD.lcd_write(line_1.c_str());
 	theLCD.lcd_set_cursor_address(0x14);
 	theLCD.lcd_write(line_2.c_str());
-	theLCD.lcd_set_cursor_address(0x00);
-    sprintf(buf, "%c====== %c =======%c",LeftBM, MiddleBM,RightBM);
+	theLCD.lcd_set_cursor_address(0x54);
+    sprintf(buf, "%c====== %c =======%c\n",LeftBM, MiddleBM,RightBM);
     theLCD.lcd_write(buf);
     /// end NIST
 

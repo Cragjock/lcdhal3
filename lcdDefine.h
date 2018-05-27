@@ -224,7 +224,6 @@
 #define LCD_WIDTH 20
 #define LCD_RAM_WIDTH 80 // RAM is 80 wide
 
-static const uint8_t ROW_OFFSETS[] = {0, 0x40, 0x14, 0x54};
 
 /// from I2C
 #define swab16 __swab16 // http://lxr.free-electrons.com/source/include/linux/swab.h#L6

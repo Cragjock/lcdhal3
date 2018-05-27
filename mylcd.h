@@ -18,28 +18,10 @@
 #include "SPI.h"
 #include "scolors.h"
 
-// When the display powers up, it is configured as follows:
-//
-// 1. Display clear
-// 2. Function set:
-//    DL = 1; 8-bit interface data
-//    N = 0; 1-line display
-//    F = 0; 5x8 dot character font
-// 3. Display on/off control:
-//    D = 0; Display off
-//    C = 0; Cursor off
-//    B = 0; Blinking off
-// 4. Entry mode set:
-//    I/D = 1; Increment by 1
-//    S = 0; No shift
 
-struct LCD_properties
-{
-    uint8_t rows;
-    uint8_t column;
-    bool is_color;
-};
-using LCD = LCD_properties;
+
+static const uint8_t ROW_OFFSETS[] = {0, 0x40, 0x14, 0x54};
+/// http://web.alfredstate.edu/faculty/weimandn/lcd/lcd_addressing/lcd_addressing_index.html
 
 typedef enum command_type {command=0x00, data=0x02} RS;
 //using RS = command_type;
@@ -47,8 +29,17 @@ typedef enum command_type {command=0x00, data=0x02} RS;
 enum class backlight_state {bkOFF, bkON};
 using BLT=backlight_state;
 
-enum class transfer_bit {x4bit,x8bit};
+enum class transfer_bit {x4bit,x8bit};  /// DL = data length
 using xBIT = transfer_bit;
+
+struct LCD_properties
+{
+    uint8_t rows;
+    uint8_t column;
+    bool is_color;
+    xBIT DL;
+};
+using LCD = LCD_properties;
 
 
 class lcddisplay
@@ -76,6 +67,7 @@ class lcddisplay
 		void set_color(struct s_myColor);
 		void set_color(enum my_color);
 		void set_bmp(void);
+		transfer_bit get_DL() const {return properties.DL;};
 
         template<typename T>
 		int lcd_write(T message);
@@ -96,7 +88,6 @@ class lcddisplay
 		uint8_t B;
 		RGB theColors;
 		LCD properties;
-		xBIT bit_depth;
         uint8_t entry_mode;
         uint8_t display_control;
         uint8_t display_shift;
@@ -171,8 +162,6 @@ class lcddisplay
 	    return *this;
 	}
 
-
-
 /// Some utility items
 /******************************/
 /// convert from string to Type T
@@ -209,6 +198,32 @@ class lcddisplay
         return s[0];
     }
 
-
-
 #endif // MY_LCD_CLASS_H
+
+/************************************************************
+* LCD DDRAM space (hex address) and row-column
+*     1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20
+*    +---------+--------+--------+----------+--------------------+
+* 1  |00|01|02|03|04|05|06|07|08|09|0A|0B|0C|0D|0E|0F|10|11|12|13|
+*    +---------+--------+--------+----------+--------------------+
+* 2  |40|41|42|43|44|45|46|47|48|49|4A|4B|4C|4D|4E|4F|50|51|52|53|
+*    +---------+--------+--------+----------+--------------------+
+* 3  |14|15|16|17|18|19|1A|1B|1C|1D|1E|1F|20|21|22|23|24|25|26|27|
+*    +---------+--------+--------+----------+--------------------+
+* 4  |54|55|56|57|58|59|5A|5B|5C|5D|5E|5F|60|61|62|63|64|65|67|68|
+*    +---------+--------+--------+----------+--------------------+
+*********/
+// When the display powers up, it is configured as follows:
+//
+// 1. Display clear
+// 2. Function set:
+//    DL = 1; 8-bit interface data
+//    N = 0; 1-line display
+//    F = 0; 5x8 dot character font
+// 3. Display on/off control:
+//    D = 0; Display off
+//    C = 0; Cursor off
+//    B = 0; Blinking off
+// 4. Entry mode set:
+//    I/D = 1; Increment by 1
+//    S = 0; No shift
