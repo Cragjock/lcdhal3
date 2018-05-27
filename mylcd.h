@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <vector>
+#include <bitset>
 #include <iterator>
 #include <chrono>		//chrono::milliseconds(1000); need scope chrono
 #include <thread>		// for chrono sleep this_thread::sleep_for(chrono::seconds(1));
@@ -17,6 +18,21 @@
 #include "SPI.h"
 #include "scolors.h"
 
+// When the display powers up, it is configured as follows:
+//
+// 1. Display clear
+// 2. Function set:
+//    DL = 1; 8-bit interface data
+//    N = 0; 1-line display
+//    F = 0; 5x8 dot character font
+// 3. Display on/off control:
+//    D = 0; Display off
+//    C = 0; Cursor off
+//    B = 0; Blinking off
+// 4. Entry mode set:
+//    I/D = 1; Increment by 1
+//    S = 0; No shift
+
 struct LCD_properties
 {
     uint8_t rows;
@@ -24,6 +40,15 @@ struct LCD_properties
     bool is_color;
 };
 using LCD = LCD_properties;
+
+typedef enum command_type {command=0x00, data=0x02} RS;
+//using RS = command_type;
+
+enum class backlight_state {bkOFF, bkON};
+using BLT=backlight_state;
+
+enum class transfer_bit {x4bit,x8bit};
+using xBIT = transfer_bit;
 
 
 class lcddisplay
@@ -71,6 +96,7 @@ class lcddisplay
 		uint8_t B;
 		RGB theColors;
 		LCD properties;
+		xBIT bit_depth;
         uint8_t entry_mode;
         uint8_t display_control;
         uint8_t display_shift;
@@ -80,6 +106,8 @@ class lcddisplay
 		//bool write_command(char command, int size=0, const char* buffer=0);
 		bool write_command(char command);
 		bool write_command(char command, int bsize, const std::vector<int> buffer);
+
+
 
         void lcd_close(void);
         void lcd_init(void);
@@ -105,9 +133,16 @@ class lcddisplay
         int set_hw_bit(uint8_t state, uint8_t pin_number);
         void lcd_pulse_enable(void);
         void lcd_send_byte(uint8_t byte);
+        void lcd_send_byteBITSET(uint8_t b);
+
+
         void lcd_set_rs(uint8_t state);
         void lcd_set_enable(uint8_t state);
         uint8_t flip(uint8_t data);
+        unsigned char flip1(unsigned char x);
+        unsigned char flip2(char a);
+
+
         void lcd_send_word(uint8_t b);
         void lcd_send_command8(uint8_t command);
         void sleep_ns(long nanoseconds);

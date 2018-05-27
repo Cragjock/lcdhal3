@@ -162,6 +162,9 @@
 #define Bit_Set 1
 #define Bit_Clear 0
 
+#define UpperNibbleMask 0x0f
+#define LowerNiblleMask 0xf0
+
 #define RS_on 0x04
 #define RS_off 0x00
 #define E_on 0x08

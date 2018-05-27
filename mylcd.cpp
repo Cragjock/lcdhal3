@@ -11,10 +11,11 @@ lcddisplay::lcddisplay()
 	// cout << "lcddisplay In constructor" << endl;
 	mySPI = new SPIBus(0,0);
 
-    function_set = 0;
-    entry_mode = 0;
-    display_control = 0;
+    this->function_set = 0;
+    this->entry_mode = 0;
+    this->display_control = 0;
     this->lcd_init();
+    this->set_bmp();
 }
 
 lcddisplay::lcddisplay(LCD sLCD)
@@ -48,58 +49,76 @@ void lcddisplay::lcd_close()
 /******************************/
 void lcddisplay::lcd_init(void)
 {
-    mySPI->set_latch(0x98);
+    //  mySPI->set_latch(0x98); // why is this here?
     function_set = 0;
     //   int res = LCDBus->myI2Cbus->device_write(GPIO, 0x00);  // why is this here?
+    int sc_temp =0;
 
 /// setup sequence per HD44780 spec, page 46
-    this_thread::sleep_for(chrono::milliseconds(5));  //sleep_ns(DELAY_SETUP_0_NS);     // 15ms
+    this_thread::sleep_for(chrono::milliseconds(15));  //sleep_ns(DELAY_SETUP_0_NS);     // 15ms
 /***** Special function case 1 ***************************************/
 /*** Function set, 8 bit interface ***/
-    function_set |= (LCD_8BITMODE | BKL_ON);                // TEST
-    lcd_send_command8(LCD_FUNCTIONSET | function_set);      // TEST
-    this_thread::sleep_for(chrono::milliseconds(1));   //sleep_ns(DELAY_SETUP_2_NS);     // 1ms
+    function_set |= (LCD_8BITMODE | BKL_ON);
+    sc_temp=function_set;
+    //lcd_send_command8(LCD_FUNCTIONSET | function_set);
+    lcd_send_command8(0x30);
+    this_thread::sleep_for(chrono::milliseconds(2));   //sleep_ns(DELAY_SETUP_2_NS);     // 1ms
+
 /***** Special function case 2 ***************************************/
 /*** Function set, 8 bit interface ***/
-    function_set |= (LCD_8BITMODE | BKL_ON);                // TEST
-    lcd_send_command8(LCD_FUNCTIONSET | function_set);      // TEST
+    function_set |= (LCD_8BITMODE | BKL_ON);
+    sc_temp=function_set;
+     //lcd_send_command8(LCD_FUNCTIONSET | function_set);
+    lcd_send_command8(0x30);
     this_thread::sleep_for(chrono::microseconds(200));  //sleep_ns(DELAY_SETUP_2_NS);     // 1ms
 
 /***** Special function case 3 **************************************/
 /*** Function set, 8 bit interface ***/
-    function_set |= (LCD_8BITMODE | BKL_ON);                // TEST
-    lcd_send_command8(LCD_FUNCTIONSET | function_set);      // TEST
+    function_set |= (LCD_8BITMODE | BKL_ON);
+    sc_temp=function_set;
+    //lcd_send_command8(LCD_FUNCTIONSET | function_set);
+    lcd_send_command8(0x30);
     this_thread::sleep_for(chrono::microseconds(200));  //sleep_ns(DELAY_SETUP_2_NS);     // 1ms
 
 /***** Initial function set for 4 bits etc **************************/
 /*** Function set, 4 bit interface ***/
     function_set = LCD_4BITMODE | BKL_ON;   // TEST but had to change |= to =
-    lcd_send_command8(LCD_FUNCTIONSET | function_set);      // TEST
+    sc_temp=function_set;
+    //lcd_send_command8(LCD_FUNCTIONSET | function_set);
+    lcd_send_command8(0xa0);
     this_thread::sleep_for(chrono::microseconds(200));  //sleep_ns(DELAY_SETUP_2_NS);     // 1ms
 
 /**************** Now in 4 bit mode ********************************/
 /*** and now normal operation can start ***/
     function_set |= LCD_4BITMODE | LCD_2LINE | LCD_5X8DOTS;
-    lcd_send_command(LCD_FUNCTIONSET | function_set); // 0x28 command
+    sc_temp=function_set;
+    //lcd_send_command(LCD_FUNCTIONSET | function_set); // 0x28 command
+    lcd_send_command(0xa8);
     this_thread::sleep_for(chrono::microseconds(40));   //sleep_ns(DELAY_SETTLE_NS);
 
     display_control |= LCD_DISPLAYOFF | LCD_CURSOROFF | LCD_BLINKOFF;
-    lcd_send_command(LCD_DISPLAYCONTROL | display_control); // x08 command
+    sc_temp=display_control;
+    //lcd_send_command(LCD_DISPLAYCONTROL | display_control); // x08 command
+    lcd_send_command(0x08); // x08 command
+    this_thread::sleep_for(chrono::microseconds(40));
 
-    lcd_clear();
-
+    lcd_clear();            /// is this the problem command ???
 
     entry_mode |= LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT;
     lcd_send_command(LCD_ENTRYMODESET | entry_mode);
     this_thread::sleep_for(chrono::microseconds(40));   //sleep_ns(DELAY_SETTLE_NS);
 
     display_control |= LCD_DISPLAYON | LCD_CURSORON | LCD_BLINKON; //x0f
+    sc_temp=display_control;
     lcd_send_command(LCD_DISPLAYCONTROL | display_control);
     this_thread::sleep_for(chrono::microseconds(10));   //sleep_ns(DELAY_SETTLE_NS);
 
 /*** Initialization done *****/
 
+    //lcd_send_byteBITSET(0x02);      /// test, command is clear
     this->lcd_write("LCD Initialization\ncomplete\n");
+
+
 }
 
 /******************************/
@@ -211,36 +230,6 @@ void lcddisplay::set_color(uint8_t red, uint8_t green, uint8_t blue)
 /******************************/
 void lcddisplay::set_bmp()
 {
-	/// per spec, only allowed 8 custom characters
-	// vector<int>custom_one{ 0xfe, 0x4e, 0x00, 0x4, 0xe, 0xe, 0xe, 0x1f, 0x0, 0x4, 0x0 }; // caution using sine id is 0x00
-	//vector<int>bmLeft = { 0xfe, 0x4e, 0x01, 8, 12, 10, 9, 10, 12, 8, 0 };
-	//vector<int>bmMiddle = { 0xfe, 0x4e, 0x02, 0, 0, 31, 14, 4, 14, 31, 0 };
-	//vector<int>bmRight = { 0xfe, 0x4e, 0x03, 2, 6, 10, 18, 10, 6, 2, 0 };
-
-
-/***************************
-	vector<int>bmSatLeft = { 0xfe, 0x4e, SatLeftBM, 0, 20, 21, 21, 31, 21, 20, 20 };
-	vector<int>bmSatright = { 0xfe, 0x4e, 0x05, 0, 5, 21, 21, 31, 21, 5, 5 };
-	vector<int>bmHand = { 0xfe, 0x4e, 0x06, 4,14,30,31,31,31,14,14};
-	vector<int>bmCheck = { 0xfe, 0x4e, 0x07, 0,1,3,22,28,8,0,0};
-
-	vector<int>bmHGempty = { 0xfe, 0x4e, 0x01, 31,17,10,4,10,17,31,0};
-	vector<int>bmHGfilling = { 0xfe, 0x4e, 0x02, 31,17,10,4,14,31,31,0};
-	vector<int>bmHGFull = { 0xfe, 0x4e, 0x03, 31,31,14,4,14,31,31,0};
-
-
-    copy(bmHGempty.cbegin(), bmHGempty.cend(), ostream_iterator<char>(in));
-	copy(bmHGfilling.cbegin(), bmHGfilling.cend(), ostream_iterator<char>(in));
-	copy(bmHGFull.cbegin(), bmHGFull.cend(), ostream_iterator<char>(in));
-
-
-	copy(bmSatLeft.cbegin(), bmSatLeft.cend(), ostream_iterator<char>(in));
-	copy(bmSatright.cbegin(), bmSatright.cend(), ostream_iterator<char>(in));
-	copy(bmHand.cbegin(), bmHand.cend(), ostream_iterator<char>(in));
-	copy(bmCheck.cbegin(), bmCheck.cend(), ostream_iterator<char>(in));
-
-***********************************/
-
 
 /******** BITMAP SET UP ************************/
     lcd_send_command(LCD_DISPLAYCONTROL | LCD_DISPLAYOFF | LCD_CURSOROFF | LCD_BLINKOFF); // x08 command
@@ -263,7 +252,8 @@ void lcddisplay::set_bmp()
     lcd_store_custom_bitmap(7, bmCheck); // store
     lcd_store_custom_bitmap(0, bmXXX); // store
 
-    lcd_send_command(LCD_RETURNHOME);
+    //lcd_send_command(LCD_RETURNHOME);
+    lcd_home();
     lcd_send_command(LCD_DISPLAYCONTROL | LCD_DISPLAYON | LCD_CURSORON | LCD_BLINKON);
 }
 
@@ -288,7 +278,9 @@ void lcddisplay::lcd_set_cursor_address(uint8_t address)
 void lcddisplay::lcd_clear(void)
 {
     lcd_send_command(LCD_CLEARDISPLAY);
+    //lcd_send_command(LCD_RETURNHOME);    //  test
     sleep_ns(DELAY_CLEAR_NS);		/* 2.6 ms  - added JW 2014/06/26 */
+    //this_thread::sleep_for(chrono::milliseconds(5));
     lcd_set_cursor_address(0);
 }
 
@@ -327,9 +319,15 @@ void lcddisplay::lcd_backlight_off(void)
 
 void lcddisplay::lcd_send_command(uint8_t command)
 {
+    #ifdef BITSET
+    lcd_send_byteBITSET(command);       /// does this work ??????
+    #else
+
+
     mySPI->set_pin_state(Bit_Clear, PIN_RS);
     lcd_send_byte(command);
     sleep_ns(DELAY_SETTLE_NS);
+    #endif
 }
 
 void lcddisplay::lcd_send_command8(uint8_t command)
@@ -354,6 +352,7 @@ void lcddisplay::lcd_send_byte(uint8_t b)
 
     //uint8_t current_state = myI2C_read_data(I2C_fp, GPIO);
     uint8_t current_state = mySPI->get_latch(); //device_read(GPIO);
+
     current_state &= DATA_MASK; // clear the data bits
 
     //send high nibble (0bXXXX0000)
@@ -374,14 +373,79 @@ void lcddisplay::lcd_send_byte(uint8_t b)
     lcd_pulse_enable();
 
 }
-void lcddisplay::lcd_send_word(uint8_t mydata) /// for init only
+
+/// xb0 = 1011 0000 input   0xb0
+/// flip = 0000 1101        0x0d
+/// shift <<3 0110 1000     0x68
+/// set E   0110 1100       0x6c
+/// set BK  1110 1100       0xec
+
+/// x01 = 0000 0001 input   0x01
+/// flip = 1000 0000        0x80
+/// shift <<3 0110 1000     0x68
+/// set E   0110 1100       0x6c
+/// set BK  1110 1100       0xec
+void lcddisplay::lcd_send_byteBITSET(uint8_t b)
 {
-    mydata = mydata & 0xef; // strip bkl
-    uint8_t flip_mydata = flip(mydata); // align to chip output
+    /// http://www.learncpp.com/cpp-tutorial/3-8a-bit-flags-and-bit-masks/
+    /// this works for RS = 0 only, at the moment
+    /// create mirror matching HW output
+    uint8_t orig_b = b;
+    uint8_t flip_b = flip(b);
+    b=flip_b;
+
+    /// align to HW output BKL DB4 DB5 DB6 DB7 E RS XX
+    //bitset<8> UPPERbits(((b & 0x0f)<<3));
+    bitset<8> UPPERbits(((b & UpperNibbleMask)<<3));
+    bitset<8> LOWERbits(((b & 0xf0)>>1));
+
+
+    UPPERbits.set(PIN_E);
+    UPPERbits.set(PIN_BKL);
+    LOWERbits.set(PIN_E);
+    LOWERbits.set(PIN_BKL);
+
+    uint8_t wtf = static_cast<int>(UPPERbits.to_ulong());   /// E set
+    UPPERbits.reset(PIN_E);
+    uint8_t wtf1 = static_cast<int>(UPPERbits.to_ulong()); /// E reset
+
+    ///send high nibble (0bXXXX0000)
+    int res = mySPI->device_write(wtf1);
+    this_thread::sleep_for(chrono::microseconds(1));
+    res = mySPI->device_write(wtf);
+    this_thread::sleep_for(chrono::microseconds(1));
+    res = mySPI->device_write(wtf1);
+    this_thread::sleep_for(chrono::microseconds(1));
+
+
+    wtf = static_cast<int>(LOWERbits.to_ulong());   /// E set
+    LOWERbits.reset(PIN_E);
+    wtf1 = static_cast<int>(LOWERbits.to_ulong()); /// E reset
+
+    ///send low nibble (0b0000XXXX)
+    res = mySPI->device_write(wtf1);
+    this_thread::sleep_for(chrono::microseconds(1));
+    res = mySPI->device_write(wtf);
+    this_thread::sleep_for(chrono::microseconds(1));
+    res = mySPI->device_write(wtf1);
+    this_thread::sleep_for(chrono::microseconds(1));
+
+
+}
+
+
+/// THIS HAD MANY ERRORS IN IT
+void lcddisplay::lcd_send_word(uint8_t mydata) /// for init only LCD only needs one data transfer in 8 bit mode
+{
+    mydata = mydata & 0x7f;// 0xef; // strip bkl
+    uint8_t flip_mydata = flip1(mydata); // align to chip output
 
     uint8_t current_state = mydata & DATA_MASK; // clear the data bits and preserve other settings
-    uint8_t new_byte = current_state | ((mydata & 0x78) >> 1);
-    int res = mySPI->device_write(new_byte);
+
+    //uint8_t new_byte = current_state | ((mydata & 0x78) >> 1);
+    uint8_t new_byte = current_state | (flip_mydata << 3);
+
+    int res = mySPI->device_write(new_byte | 0x80   );
     lcd_pulse_enable();
 }
 
@@ -476,8 +540,6 @@ void lcddisplay::lcd_bitmap(int bmp_id)
 
 /******************************/
 
-
-
 static int max(int a, int b)
 {
     return a > b ? a : b;
@@ -488,7 +550,7 @@ static int min(int a, int b)
     return a < b ? a : b;
 }
 
-
+/******************************/
 uint8_t lcddisplay::flip(uint8_t data)
 {
     char flip = data;  //   0b01100110; // starting data in
@@ -512,7 +574,6 @@ uint8_t lcddisplay::flip(uint8_t data)
     mirror = ((mirror<<1) + (flip & mask));
 
     return mirror;
-
 }
 
 void lcddisplay::lcd_store_custom_bitmap(uint8_t location, uint8_t bitmap[])
@@ -609,6 +670,51 @@ int lcddisplay::hlcd_write(const char * message)
     return cursor_address;
 }
 /// ********************* END WRITE *****************
+unsigned char lcddisplay::flip1(unsigned char x)
+{
+    static const unsigned char table[] = {
+        0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0,
+        0x10, 0x90, 0x50, 0xd0, 0x30, 0xb0, 0x70, 0xf0,
+        0x08, 0x88, 0x48, 0xc8, 0x28, 0xa8, 0x68, 0xe8,
+        0x18, 0x98, 0x58, 0xd8, 0x38, 0xb8, 0x78, 0xf8,
+        0x04, 0x84, 0x44, 0xc4, 0x24, 0xa4, 0x64, 0xe4,
+        0x14, 0x94, 0x54, 0xd4, 0x34, 0xb4, 0x74, 0xf4,
+        0x0c, 0x8c, 0x4c, 0xcc, 0x2c, 0xac, 0x6c, 0xec,
+        0x1c, 0x9c, 0x5c, 0xdc, 0x3c, 0xbc, 0x7c, 0xfc,
+        0x02, 0x82, 0x42, 0xc2, 0x22, 0xa2, 0x62, 0xe2,
+        0x12, 0x92, 0x52, 0xd2, 0x32, 0xb2, 0x72, 0xf2,
+        0x0a, 0x8a, 0x4a, 0xca, 0x2a, 0xaa, 0x6a, 0xea,
+        0x1a, 0x9a, 0x5a, 0xda, 0x3a, 0xba, 0x7a, 0xfa,
+        0x06, 0x86, 0x46, 0xc6, 0x26, 0xa6, 0x66, 0xe6,
+        0x16, 0x96, 0x56, 0xd6, 0x36, 0xb6, 0x76, 0xf6,
+        0x0e, 0x8e, 0x4e, 0xce, 0x2e, 0xae, 0x6e, 0xee,
+        0x1e, 0x9e, 0x5e, 0xde, 0x3e, 0xbe, 0x7e, 0xfe,
+        0x01, 0x81, 0x41, 0xc1, 0x21, 0xa1, 0x61, 0xe1,
+        0x11, 0x91, 0x51, 0xd1, 0x31, 0xb1, 0x71, 0xf1,
+        0x09, 0x89, 0x49, 0xc9, 0x29, 0xa9, 0x69, 0xe9,
+        0x19, 0x99, 0x59, 0xd9, 0x39, 0xb9, 0x79, 0xf9,
+        0x05, 0x85, 0x45, 0xc5, 0x25, 0xa5, 0x65, 0xe5,
+        0x15, 0x95, 0x55, 0xd5, 0x35, 0xb5, 0x75, 0xf5,
+        0x0d, 0x8d, 0x4d, 0xcd, 0x2d, 0xad, 0x6d, 0xed,
+        0x1d, 0x9d, 0x5d, 0xdd, 0x3d, 0xbd, 0x7d, 0xfd,
+        0x03, 0x83, 0x43, 0xc3, 0x23, 0xa3, 0x63, 0xe3,
+        0x13, 0x93, 0x53, 0xd3, 0x33, 0xb3, 0x73, 0xf3,
+        0x0b, 0x8b, 0x4b, 0xcb, 0x2b, 0xab, 0x6b, 0xeb,
+        0x1b, 0x9b, 0x5b, 0xdb, 0x3b, 0xbb, 0x7b, 0xfb,
+        0x07, 0x87, 0x47, 0xc7, 0x27, 0xa7, 0x67, 0xe7,
+        0x17, 0x97, 0x57, 0xd7, 0x37, 0xb7, 0x77, 0xf7,
+        0x0f, 0x8f, 0x4f, 0xcf, 0x2f, 0xaf, 0x6f, 0xef,
+        0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff,
+    };
+    return table[x];
+}
 
+unsigned char lcddisplay::flip2(char a)
+{
+  return ((a & 0x1)  << 7) | ((a & 0x2)  << 5) |
+         ((a & 0x4)  << 3) | ((a & 0x8)  << 1) |
+         ((a & 0x10) >> 1) | ((a & 0x20) >> 3) |
+         ((a & 0x40) >> 5) | ((a & 0x80) >> 7);
+}
 
 

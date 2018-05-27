@@ -34,9 +34,14 @@ using namespace std;
 *
 ***********************************************************/
 
-static const uint8_t spi_mode = 0;     // defines clock polarity edge
+
+
+//static const uint8_t lsb = 0; /// ioctl( m_fd, SPI_IOC_WR_LSB_FIRST, &lsb );SPI_LSB_FIRST
+static const int lsb = 0;
+
+static const uint8_t spi_mode = 0;     // defines clock polarity edge was = 0
 static const uint8_t spi_bpw = 8; // bits per word
-static const uint32_t spi_speed = 1500000; // 10MHz 10000000  the 595 spec is 20mhz max
+static const uint32_t spi_speed = 30000000; // 10MHz 10000000  the 595 spec is 20mhz max
 static const uint16_t spi_delay = 0;
 static const char * spidev[2][2] = {
     {"/dev/spidev0.0", "/dev/spidev0.1"},
@@ -103,6 +108,17 @@ int SPIBus::openspi()
             close(fd);
             return -1;
         }
+
+    if (ioctl(fd, SPI_IOC_WR_LSB_FIRST, &lsb) < 0)
+        {
+            fprintf(stderr, "SPI_open: ERROR Could not set SPI lsb.\n");
+            printf("ERROR: %s\n", strerror(errno));
+            close(fd);
+            return -1;
+        }
+        int mycheck = lsb;
+
+
         this->fd = fd;
 
     return fd;
@@ -130,6 +146,7 @@ int SPIBus::device_read(int data)
 
 /******************************/
 ///void SPI_write_reg(uint8_t data, int fd)
+/// transfer order starts with MSB on R-Pi
 int SPIBus::device_write(uint8_t data)
 {
     uint8_t tx_buf[1] = {data};
@@ -214,6 +231,7 @@ void SPIBus::SPI_write_reg(uint8_t data)
         fprintf(stderr,
                 "SPI_write_reg: There was a error during the SPI "
                 "transaction.\n");
+                // printf("ERROR: %s\n", strerror(errno));
     }
     this->set_latch(data);
 
