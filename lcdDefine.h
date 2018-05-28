@@ -83,9 +83,9 @@
 #define SatRightBM 0x05
 #define HandBM 0x06
 #define CheckBM 0x07
-#define HourGlassEmptyBM 0x01
-#define HourGlassFillingBM 0x02
-#define HourGlassFullBM 0x03
+#define HourGlassEmptyBM 0x06
+#define HourGlassFillingBM 0x07
+#define HourGlassFullBM 0x08
 
 
 #define full 0x01

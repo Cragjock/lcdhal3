@@ -23,8 +23,9 @@
 static const uint8_t ROW_OFFSETS[] = {0, 0x40, 0x14, 0x54};
 /// http://web.alfredstate.edu/faculty/weimandn/lcd/lcd_addressing/lcd_addressing_index.html
 
-typedef enum command_type {command=0x00, data=0x02} RS;
-//using RS = command_type;
+//typedef enum command_type {command=0x00, data=0x02} RS;
+enum class command_type {command, data};
+using RS = command_type;
 
 enum class backlight_state {bkOFF, bkON};
 using BLT=backlight_state;
@@ -80,6 +81,7 @@ class lcddisplay
 
     private:
         SPIBus* mySPI;
+        //std::unique_ptr<SPIBus> mySPI;
 
         uint8_t height, width, cursor_col, cursor_row;
         uint8_t cursor_address;
@@ -125,6 +127,7 @@ class lcddisplay
         void lcd_pulse_enable(void);
         void lcd_send_byte(uint8_t byte);
         void lcd_send_byteBITSET(uint8_t b);
+        void lcd_send_byteBITSET(RS cmd, uint8_t b);
 
 
         void lcd_set_rs(uint8_t state);

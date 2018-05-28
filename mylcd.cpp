@@ -10,6 +10,7 @@ lcddisplay::lcddisplay()
 {
 	// cout << "lcddisplay In constructor" << endl;
 	mySPI = new SPIBus(0,0);
+	//mySPI(new SPIBus(0,0));
 
     this->function_set = 0;
     this->entry_mode = 0;
@@ -27,6 +28,8 @@ lcddisplay::lcddisplay(LCD sLCD)
 {
 	cout << "lcddisplay In lcd constructor" << endl;
 	mySPI = new SPIBus(0,0);
+	//mySPI = make_unique<SPIBus>(SPIBus(0,0));
+	//mySPI(new SPIBus(0,0));
 	this->properties.rows=sLCD.rows;
 	this->properties.column=sLCD.column;
 	this->properties.is_color=sLCD.is_color;
@@ -239,7 +242,7 @@ void lcddisplay::set_color(uint8_t red, uint8_t green, uint8_t blue)
 /******************************/
 void lcddisplay::set_bmp()
 {
-
+/// https://www.quinapalus.com/hd44780udg.html
 /******** BITMAP SET UP ************************/
     lcd_send_command(LCD_DISPLAYCONTROL | LCD_DISPLAYOFF | LCD_CURSOROFF | LCD_BLINKOFF); // x08 command
     uint8_t bmLeft[]= {8,12,10,9,10,12,8,0};
@@ -251,15 +254,23 @@ void lcddisplay::set_bmp()
     uint8_t bmCheck[] = {0,1,3,22,28,8,0,0};
     uint8_t bmXXX[] = {0,27,14,4,12,27,0,0};
 
+    uint8_t bmHGempty[] = { 31,17,10,4,10,17,31,0};
+	uint8_t bmHGfilling[] = { 31,17,10,4,14,31,31,0};
+	uint8_t bmHGFull[] = {31,31,14,4,14,31,31,0};
+	uint8_t bmHPacOpen[] = {14,31,28,24,28,31,14,0};
+	uint8_t bmHPacClosed[] = {14,31,31,31,31,31,14,0};
 
     lcd_store_custom_bitmap(1, bmLeft); // store
     lcd_store_custom_bitmap(2, bmMiddle); // store
     lcd_store_custom_bitmap(3, bmRight); // store
     lcd_store_custom_bitmap(4, bmSatLeft); // store
     lcd_store_custom_bitmap(5, bmSatright); // store
-    lcd_store_custom_bitmap(6, bmhand); // store
-    lcd_store_custom_bitmap(7, bmCheck); // store
-    lcd_store_custom_bitmap(0, bmXXX); // store
+    //lcd_store_custom_bitmap(6, bmhand); // store
+    //lcd_store_custom_bitmap(7, bmCheck); // store
+    //lcd_store_custom_bitmap(0, bmXXX); // store
+    lcd_store_custom_bitmap(6, bmHGempty); // store
+    lcd_store_custom_bitmap(7, bmHGfilling); // store
+    lcd_store_custom_bitmap(0, bmHGFull); // store
 
     //lcd_send_command(LCD_RETURNHOME);
     lcd_home();
@@ -329,10 +340,9 @@ void lcddisplay::lcd_backlight_off(void)
 void lcddisplay::lcd_send_command(uint8_t command)
 {
     #ifdef BITSET
-    lcd_send_byteBITSET(command);       /// does this work ??????
+    //lcd_send_byteBITSET(command);       /// does this work ??????
+    lcd_send_byteBITSET(RS::command, command);
     #else
-
-
     mySPI->set_pin_state(Bit_Clear, PIN_RS);
     lcd_send_byte(command);
     sleep_ns(DELAY_SETTLE_NS);
@@ -347,12 +357,17 @@ void lcddisplay::lcd_send_command8(uint8_t command)
 
 void lcddisplay::lcd_send_data(uint8_t data)
 {
-    //lcd_set_rs(1);
+    #ifdef BITSET
+    lcd_send_byteBITSET(RS::data, data);
+    #else
     mySPI->set_pin_state(Bit_Set, PIN_RS);
     lcd_send_byte(data);
     sleep_ns(DELAY_SETTLE_NS);
+    #endif // BITSET
+
 }
 
+/******************************/
 void lcddisplay::lcd_send_byte(uint8_t b)
 {
     uint8_t orig_b = b;
@@ -383,19 +398,75 @@ void lcddisplay::lcd_send_byte(uint8_t b)
 
 }
 
-/// xb0 = 1011 0000 input   0xb0
-/// flip = 0000 1101        0x0d
-/// shift <<3 0110 1000     0x68
-/// set E   0110 1100       0x6c
-/// set BK  1110 1100       0xec
+/******************************/
+void lcddisplay::lcd_send_byteBITSET(RS cmd, uint8_t b)
+{
+    /// create mirror matching HW output
+        uint8_t orig_b = b;
+        uint8_t flip_b = flip1(b); /// use table lookup
+        b=flip_b;
+    /// align output byte  7   6     5     4     3     2 1  0
+    /// align to HW output BKL DB4/0 DB5/1 DB6/2 DB7/3 E RS NC
 
-/// x01 = 0000 0001 input   0x01
-/// flip = 1000 0000        0x80
-/// shift <<3 0110 1000     0x68
-/// set E   0110 1100       0x6c
-/// set BK  1110 1100       0xec
+        bitset<8> UPPERbits(((b & UpperNibbleMask)<<3));
+        bitset<8> LOWERbits(((b & 0xf0)>>1));
 
-/// RS = 0, instruction register
+    /// common settings
+    /// turn E and back light on,
+        UPPERbits.set(PIN_E);
+        UPPERbits.set(PIN_BKL);
+        LOWERbits.set(PIN_E);
+        LOWERbits.set(PIN_BKL);
+
+    if(cmd == RS::command)
+    {
+    /// RS = 0 command register
+        UPPERbits.reset(PIN_RS);
+        LOWERbits.reset(PIN_RS);
+    }
+    else if(cmd == RS::data)
+    {
+     /// RS = 1 data register
+        UPPERbits.set(PIN_RS);
+        LOWERbits.set(PIN_RS);
+    }
+        uint8_t wtf = static_cast<int>(UPPERbits.to_ulong());   /// E set for pulse
+        UPPERbits.reset(PIN_E);
+        uint8_t wtf1 = static_cast<int>(UPPERbits.to_ulong()); /// E reset for pulse
+
+    ///send high nibble (0bXXXX0000), BKL DB4/0 DB5/1 DB6/2
+        //int res = mySPI->device_write(wtf1);
+        //this_thread::sleep_for(chrono::microseconds(1));
+        int res = mySPI->device_write(wtf);
+        this_thread::sleep_for(chrono::nanoseconds(100)); ///per spec pg 52/58 E pulse width s/b 230ns min
+        res = mySPI->device_write(wtf1);
+        this_thread::sleep_for(chrono::nanoseconds(100));
+
+    /// DL=4 bit mode or 8?
+    /// If in 8bit, done & exit, no need for sending lower nibble
+        if(properties.DL == xBIT::x8bit)
+        {
+            return;
+        }
+        else
+        {
+        wtf = static_cast<int>(LOWERbits.to_ulong());   /// E set for pulse
+        LOWERbits.reset(PIN_E);
+        wtf1 = static_cast<int>(LOWERbits.to_ulong()); /// E reset for pulse
+
+        ///send low nibble (0b0000XXXX), DB7/3 E RS NC
+        //res = mySPI->device_write(wtf1);
+        //this_thread::sleep_for(chrono::microseconds(1));
+        res = mySPI->device_write(wtf);
+        this_thread::sleep_for(chrono::nanoseconds(100));
+        res = mySPI->device_write(wtf1);
+        this_thread::sleep_for(chrono::nanoseconds(100));
+        return;
+        }
+}
+
+
+/******************************/
 void lcddisplay::lcd_send_byteBITSET(uint8_t b)
 {
     /// http://www.learncpp.com/cpp-tutorial/3-8a-bit-flags-and-bit-masks/
@@ -772,4 +843,119 @@ unsigned char lcddisplay::flip2(char a)
          ((a & 0x40) >> 5) | ((a & 0x80) >> 7);
 }
 
+/******************************************
+void lcddisplay::lcd_send_byteBITSET(RS cmd, uint8_t b)
+{
+    if(cmd == RS::command)
+    {
+        //cout<<"OMG command "<<b<<endl;
+    /// create mirror matching HW output
+        uint8_t orig_b = b;
+        uint8_t flip_b = flip(b);
+        b=flip_b;
+    /// align output byte  7   6     5     4     3     2 1  0
+    /// align to HW output BKL DB4/0 DB5/1 DB6/2 DB7/3 E RS NC
 
+        bitset<8> UPPERbits(((b & UpperNibbleMask)<<3));
+        bitset<8> LOWERbits(((b & 0xf0)>>1));
+
+    /// turn E and back light on, RS = 0 command register
+        UPPERbits.reset(PIN_RS);
+        UPPERbits.set(PIN_E);
+        UPPERbits.set(PIN_BKL);
+        LOWERbits.reset(PIN_RS);
+        LOWERbits.set(PIN_E);
+        LOWERbits.set(PIN_BKL);
+
+        uint8_t wtf = static_cast<int>(UPPERbits.to_ulong());   /// E set
+        UPPERbits.reset(PIN_E);
+        uint8_t wtf1 = static_cast<int>(UPPERbits.to_ulong()); /// E reset
+
+    ///send high nibble (0bXXXX0000), BKL DB4/0 DB5/1 DB6/2
+        //int res = mySPI->device_write(wtf1);
+        //this_thread::sleep_for(chrono::microseconds(1));
+        int res = mySPI->device_write(wtf);
+        this_thread::sleep_for(chrono::microseconds(1));
+        res = mySPI->device_write(wtf1);
+        this_thread::sleep_for(chrono::microseconds(1));
+
+    /// DL=4 bit mode or 8?
+    /// If in 8bit, done & exit, no need for sending lower nibble
+        if(properties.DL == xBIT::x8bit)
+        {
+            return;
+        }
+        else
+        {
+        wtf = static_cast<int>(LOWERbits.to_ulong());   /// E set
+        LOWERbits.reset(PIN_E);
+        wtf1 = static_cast<int>(LOWERbits.to_ulong()); /// E reset
+
+        ///send low nibble (0b0000XXXX), DB7/3 E RS NC
+        //res = mySPI->device_write(wtf1);
+        //this_thread::sleep_for(chrono::microseconds(1));
+        res = mySPI->device_write(wtf);
+        this_thread::sleep_for(chrono::microseconds(1));
+        res = mySPI->device_write(wtf1);
+        this_thread::sleep_for(chrono::microseconds(1));
+        return;
+        }
+    }
+
+    if(cmd == RS::data)
+    {
+        //cout<<"OMG data "<<b<<endl;
+        /// create mirror matching HW output
+        uint8_t orig_b = b;
+        uint8_t flip_b = flip(b);
+        b=flip_b;
+    /// align output byte  7   6     5     4     3     2 1  0
+    /// align to HW output BKL DB4/0 DB5/1 DB6/2 DB7/3 E RS NC
+
+        bitset<8> UPPERbits(((b & UpperNibbleMask)<<3));
+        bitset<8> LOWERbits(((b & 0xf0)>>1));
+
+    /// turn E and back light on, RS = 1 data register
+        UPPERbits.set(PIN_RS);
+        UPPERbits.set(PIN_E);
+        UPPERbits.set(PIN_BKL);
+        LOWERbits.set(PIN_RS);
+        LOWERbits.set(PIN_E);
+        LOWERbits.set(PIN_BKL);
+
+        uint8_t wtf = static_cast<int>(UPPERbits.to_ulong());   /// E set
+        UPPERbits.reset(PIN_E);
+        uint8_t wtf1 = static_cast<int>(UPPERbits.to_ulong()); /// E reset
+
+    ///send high nibble (0bXXXX0000), BKL DB4/0 DB5/1 DB6/2
+        //int res = mySPI->device_write(wtf1);
+        //this_thread::sleep_for(chrono::microseconds(1));
+        int res = mySPI->device_write(wtf);
+        this_thread::sleep_for(chrono::microseconds(1));
+        res = mySPI->device_write(wtf1);
+        this_thread::sleep_for(chrono::microseconds(1));
+
+    /// DL=4 bit mode or 8?
+    /// If in 8bit, done & exit, no need for sending lower nibble
+        if(properties.DL == xBIT::x8bit)
+        {
+            return;
+        }
+        else
+        {
+        wtf = static_cast<int>(LOWERbits.to_ulong());   /// E set
+        LOWERbits.reset(PIN_E);
+        wtf1 = static_cast<int>(LOWERbits.to_ulong()); /// E reset
+
+        ///send low nibble (0b0000XXXX), DB7/3 E RS NC
+        //res = mySPI->device_write(wtf1);
+        //this_thread::sleep_for(chrono::microseconds(1));
+        res = mySPI->device_write(wtf);
+        this_thread::sleep_for(chrono::microseconds(1));
+        res = mySPI->device_write(wtf1);
+        this_thread::sleep_for(chrono::microseconds(1));
+        return;
+        }
+    }
+}
+***********************/

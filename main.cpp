@@ -100,8 +100,8 @@ int main()
 
     theLCD.lcd_clear();
 	theLCD<<"insertor check\n";
-	theLCD<<SatLeftBM<<SatRightBM;
-	this_thread::sleep_for(chrono::seconds(1));
+	theLCD<<SatLeftBM<<SatRightBM<<LeftBM<<MiddleBM<<RightBM<<HourGlassEmptyBM<<HourGlassFillingBM<<HourGlassFullBM<<"\n";
+	this_thread::sleep_for(chrono::seconds(3));
 	theLCD.lcd_clear();
 	theLCD.lcd_write(alpha);
 	this_thread::sleep_for(chrono::seconds(1));

@@ -116,7 +116,7 @@ int SPIBus::openspi()
             close(fd);
             return -1;
         }
-        int mycheck = lsb;
+        /// int mycheck = lsb;
 
 
         this->fd = fd;
