@@ -75,17 +75,30 @@
 
 
 /*************** bitmap items ********/
-#define XXXBM 0x08
+/// need to store in same location as define number
+
+/// BANK 0
 #define LeftBM 0x01
 #define MiddleBM 0x02
 #define RightBM 0x03
 #define SatLeftBM 0x04
 #define SatRightBM 0x05
-#define HandBM 0x06
-#define CheckBM 0x07
 #define HourGlassEmptyBM 0x06
 #define HourGlassFillingBM 0x07
-#define HourGlassFullBM 0x08
+#define HourGlassFullBM 0x08    /// needs to be 8 versus 0 as this fails same result due to 44780 addressing
+
+/// BANK 1
+#define ToRightBM  0x01
+#define ToLeftBM 0x02
+#define ToUpBM 0x03
+#define ToDownBM 0x04
+#define PacOpenBM   0x05
+#define PacClosedBM 0x06
+#define HandBM 0x07
+#define CheckBM 0x08  /// needs to be 8 versus 0 as this fails same result due to 44780 addressing
+
+/// BANK 2
+#define XXXBM 0x08  /// needs to be 8 versus 0 as this fails same result due to 44780 addressing
 
 
 #define full 0x01

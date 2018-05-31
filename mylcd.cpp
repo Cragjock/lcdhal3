@@ -32,7 +32,8 @@ lcddisplay::lcddisplay(LCD sLCD)
 	this->properties.rows=sLCD.rows;
 	this->properties.column=sLCD.column;
 	this->properties.is_color=sLCD.is_color;
-	this->properties.DL = sLCD.DL;
+	//this->properties.DL = sLCD.DL;
+	properties.DL = xBIT::x8bit;    /// default for HD8870 spec
     function_set = 0;
     entry_mode = 0;
     display_control = 0;
@@ -332,22 +333,22 @@ void lcddisplay::set_bmp()
 	vector<char>vbmToDown = {31,0,31,14,4,0,0,0};
 
 
-	//lcd_store_custom_bitmap(1, vbmToRight); // store
-	//lcd_store_custom_bitmap(2, vbmToLeft); // stor
+	lcd_store_custom_bitmap(1, vbmToRight); // store
+	lcd_store_custom_bitmap(2, vbmToLeft); // stor
 
 
     //lcd_store_custom_bitmap(1, bmLeft); // store
     //lcd_store_custom_bitmap(2, bmMiddle); // store
-    //lcd_store_custom_bitmap(3, vbmRight); // store
-    //lcd_store_custom_bitmap(4, vbmSatLeft); // store
-    //lcd_store_custom_bitmap(5, vbmSatright); // store
+    lcd_store_custom_bitmap(3, vbmRight); // store
+    lcd_store_custom_bitmap(4, vbmSatLeft); // store
+    lcd_store_custom_bitmap(5, vbmSatright); // store
     //lcd_store_custom_bitmap(6, bmhand); // store
     //lcd_store_custom_bitmap(7, bmCheck); // store
     //lcd_store_custom_bitmap(0, bmXXX); // store
 
-    //lcd_store_custom_bitmap(6, vbmHGempty); // store
-    //lcd_store_custom_bitmap(7, vbmHGfilling); // store
-    //lcd_store_custom_bitmap(0, vbmHGFull); // store
+    lcd_store_custom_bitmap(6, vbmHGempty); // store
+    lcd_store_custom_bitmap(7, vbmHGfilling); // store
+    lcd_store_custom_bitmap(0, vbmHGFull); // store
 
     //vector<char>test = {'a', 'b', 'c', 'd', 'e'};
     //std::vector<std::vector<char> > bank0;
@@ -421,8 +422,8 @@ void lcddisplay::lcd_clear(void)
 {
     lcd_send_command(LCD_CLEARDISPLAY);
     //lcd_send_command(LCD_RETURNHOME);    //  test
-    sleep_ns(DELAY_CLEAR_NS);		/* 2.6 ms  - added JW 2014/06/26 */
-    //this_thread::sleep_for(chrono::milliseconds(5));
+    //sleep_ns(DELAY_CLEAR_NS);		/* 2.6 ms  - added JW 2014/06/26 */
+    this_thread::sleep_for(chrono::milliseconds(5));
     lcd_set_cursor_address(0);
 }
 
@@ -430,7 +431,8 @@ void lcddisplay::lcd_clear(void)
 void lcddisplay::lcd_home(void)
 {
     lcd_send_command(LCD_RETURNHOME);
-    sleep_ns(DELAY_CLEAR_NS);		/* 2.6 ms  - added JW 2014/06/26 */
+    this_thread::sleep_for(chrono::milliseconds(5));
+    //sleep_ns(DELAY_CLEAR_NS);		/* 2.6 ms  - added JW 2014/06/26 */
     cursor_address = 0;
 	lcd_set_cursor_address(0);
 }
@@ -471,12 +473,6 @@ void lcddisplay::lcd_send_command(uint8_t command)
     #endif
 }
 
-void lcddisplay::lcd_send_command8(uint8_t command)
-{
-    lcd_send_word(command);
-    sleep_ns(DELAY_SETTLE_NS);
-}
-
 void lcddisplay::lcd_send_data(uint8_t data)
 {
     #ifdef BITSET
@@ -488,6 +484,14 @@ void lcddisplay::lcd_send_data(uint8_t data)
     #endif // BITSET
 
 }
+
+void lcddisplay::lcd_send_command8(uint8_t command)
+{
+    lcd_send_word(command);
+    sleep_ns(DELAY_SETTLE_NS);
+}
+
+
 
 /******************************/
 void lcddisplay::lcd_send_byte(uint8_t b)

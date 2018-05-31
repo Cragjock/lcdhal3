@@ -31,7 +31,7 @@ using namespace std;
 
     char buf[80];
 
-int main()
+int main()          /// SPI version
 {
 
     cout<<"building from scratch "<<endl;
@@ -42,31 +42,38 @@ int main()
     //myBus.SPI_write_reg(0x80);     // ==== TESTING
     //myBus.~SPIBus();
 
-    //lcddisplay theLCD;      /// causes segfault if here
+    //LCD LSPI{4,20,false};
+    lcddisplay theLCD;
 
     /// NIST
-    char* NISTbuffer = new char[100];
-	char test1[100];
+    vector<char>vNISTbuffer (100,0);
+    //char* NISTbuffer = new char[100](); /// add () to all others, sets to all zero
 
-	lcddisplay theLCD;      /// ok if here but why???
-    int size_test = buf_pitime(NISTbuffer);
-
-
+    ///   int size_test = buf_pitime(NISTbuffer);
+    int size_test = buf_pitime(&vNISTbuffer[0]);
 
     cout <<"===return size is: "<<size_test<<endl;
     if(size_test == 0)
     {
         cout<<"NIST no data,\nsize is "<<endl;
-        //theLCD.lcd_write("NIST no data,\nsize is ");
-        //theLCD<<size_test;
+        theLCD.lcd_write("NIST no data,\nsize is ");
+        theLCD<<size_test;
+        this_thread::sleep_for(chrono::seconds(2));
         return 0;
     }
 
-    vector<char> vecnist(100);
-	strcpy(&vecnist[0], NISTbuffer);	// STD reference page 278
-	vecnist.shrink_to_fit();
+    //vector<char> vecnist(100,0);
+    //vecnist = vNISTbuffer;
 
-    string mynist(NISTbuffer);
+	// strcpy(&vecnist[0], NISTbuffer);	// STD reference page 278
+	//vecnist.shrink_to_fit();
+	vNISTbuffer.resize(size_test);
+	vNISTbuffer.shrink_to_fit();
+
+
+	///std::string str(vec.begin(), vec.end());
+    //string mynist(NISTbuffer);
+    string mynist(vNISTbuffer.begin(), vNISTbuffer.end());
 	string line_1 = mynist.substr(7, 8);
 	string line_2 = mynist.substr(16, 8);
 
@@ -78,8 +85,6 @@ int main()
 	cout << line_3 << endl;
 	cout << mynist << endl;
 
-
-    //lcddisplay theLCD;
     this_thread::sleep_for(chrono::seconds(1));
     theLCD.lcd_clear();
 
