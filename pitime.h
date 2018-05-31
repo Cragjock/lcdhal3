@@ -1,3 +1,7 @@
+#ifndef PI_TIME
+#define PI_TIME
+
+
 #include <stdio.h>
 #include <stdlib.h>
 //#include <math.h>
@@ -13,3 +17,5 @@
 char* pitime();
 int buf_pitime(char* myrec);
 int no_net_pitime(char* myrec);
+
+#endif // PI_TIME

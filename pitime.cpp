@@ -126,6 +126,7 @@ int buf_pitime(char* myrec)
     char rec[256];
 
     int bytesRcvd = recv(d_sock, myrec, 255, 0);
+    int rtn_bytesRcvd = bytesRcvd;
     //printf("\n=====BYTES is %i \n", bytesRcvd);
     while (bytesRcvd)
     {
@@ -139,9 +140,11 @@ int buf_pitime(char* myrec)
         //bytesRcvd = recv(d_sock, rec, 255, MSG_DONTWAIT);
         //printf("\n=====BYTES is %i \n", bytesRcvd);
    }
+    //myrec[rtn_bytesRcvd] = '\0';        /// ???
     close(d_sock);
-    int sizeit = sizeof(myrec);
-    return sizeit;
+    //int sizeit = sizeof(myrec);
+    //return sizeit;
+    return rtn_bytesRcvd;
 }
 
 

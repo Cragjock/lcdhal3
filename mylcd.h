@@ -7,6 +7,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <fstream>
+#include <array>
 #include <vector>
 #include <bitset>
 #include <iterator>
@@ -79,9 +80,18 @@ class lcddisplay
         template<typename T>
         bool display(T message);
 
+
+        std::vector<std::vector<char>> bankX;/// for bitmaps, how do array?
+        std::vector<std::array<char,8>> bank0;
+        std::vector<std::array<char,8>> bank1;
+
     private:
-        SPIBus* mySPI;
-        //std::unique_ptr<SPIBus> mySPI;
+        template<typename T>
+        void lcd_store_custom_bitmap(uint8_t location, const T bitmap);
+
+        //SPIBus* mySPI;
+        std::unique_ptr<SPIBus> mySPI;
+
 
         uint8_t height, width, cursor_col, cursor_row;
         uint8_t cursor_address;
@@ -112,7 +122,7 @@ class lcddisplay
         //void set_eeprom_bmp();
 
         void lcd_write_custom_bitmap(uint8_t location);
-        void lcd_store_custom_bitmap(uint8_t location, uint8_t bitmap[]);
+        //void lcd_store_custom_bitmap(uint8_t location, uint8_t bitmap[]);
         void lcd_set_backlight(uint8_t state);
         void lcd_backlight_on(void);
         void lcd_backlight_off(void);
@@ -164,6 +174,23 @@ class lcddisplay
         lcd_write(data);
 	    return *this;
 	}
+
+	template<typename T>
+	void lcddisplay::lcd_store_custom_bitmap(uint8_t location, const T bitmap)
+	{
+        //assert(location >=0);
+        location &= 0x7; // we only have 8 locations, 0-7
+        lcd_send_command(LCD_SETCGRAMADDR | (location << 3));
+        //int i;
+        for (auto i = 0; i < 8; i++)
+        {
+            lcd_send_data(bitmap[i]);
+        }
+	}
+
+
+
+
 
 /// Some utility items
 /******************************/

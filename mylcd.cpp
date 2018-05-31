@@ -4,18 +4,17 @@
 using namespace std;
 
 
-
 /******************************/
 lcddisplay::lcddisplay()
 {
 	// cout << "lcddisplay In constructor" << endl;
-	mySPI = new SPIBus(0,0);
+	//mySPI = new SPIBus(0,0);
 	//mySPI(new SPIBus(0,0));
+	mySPI= unique_ptr<SPIBus>(new SPIBus(0,0));  //myI2C=new I2CBus(1,0x20);
 
     this->function_set = 0;
     this->entry_mode = 0;
     this->display_control = 0;
-
     properties.rows = 4;
     properties.column = 20;
     properties.DL = xBIT::x8bit;    /// default for HD8870 spec
@@ -27,9 +26,9 @@ lcddisplay::lcddisplay()
 lcddisplay::lcddisplay(LCD sLCD)
 {
 	cout << "lcddisplay In lcd constructor" << endl;
-	mySPI = new SPIBus(0,0);
-	//mySPI = make_unique<SPIBus>(SPIBus(0,0));
-	//mySPI(new SPIBus(0,0));
+	//mySPI = new SPIBus(0,0);
+	mySPI= unique_ptr<SPIBus>(new SPIBus(0,0));  //myI2C=new I2CBus(1,0x20);
+
 	this->properties.rows=sLCD.rows;
 	this->properties.column=sLCD.column;
 	this->properties.is_color=sLCD.is_color;
@@ -38,6 +37,7 @@ lcddisplay::lcddisplay(LCD sLCD)
     entry_mode = 0;
     display_control = 0;
     this->lcd_init();
+    this->set_bmp();
 }
 
 /******************************/
@@ -52,7 +52,7 @@ void lcddisplay::lcd_close()
     lcd_clear();
     lcd_send_command(LCD_DISPLAYCONTROL | LCD_CURSOROFF);
     lcd_backlight_off();
-    mySPI->~SPIBus();
+    //mySPI->~SPIBus();
 }
 
 /******************************/
@@ -238,6 +238,28 @@ void lcddisplay::set_color(uint8_t red, uint8_t green, uint8_t blue)
 	this->G = green;
 	this->B = blue;
 }
+/******************************/
+bool lcddisplay::load_bmp_bank(uint8_t bank_number)     /// command is 0xfe, 0xc0, bank_number (0-4)
+{
+
+    if(bank_number == 0)
+    {
+        for(int i=0; i<8; i++)
+            lcd_store_custom_bitmap((i+1), bank0[i]); // store
+    }
+    else
+
+
+    for(int i=0; i<8; i++)
+    {
+        lcd_store_custom_bitmap((i+1), bank1[i]); // store
+    }
+
+
+
+	return true;
+}
+
 
 /******************************/
 void lcddisplay::set_bmp()
@@ -245,32 +267,132 @@ void lcddisplay::set_bmp()
 /// https://www.quinapalus.com/hd44780udg.html
 /******** BITMAP SET UP ************************/
     lcd_send_command(LCD_DISPLAYCONTROL | LCD_DISPLAYOFF | LCD_CURSOROFF | LCD_BLINKOFF); // x08 command
-    uint8_t bmLeft[]= {8,12,10,9,10,12,8,0};
-    uint8_t bmMiddle[]={0,0,31,14,4,14,31,0};
-    uint8_t bmRight[]={2,6,10,18,10,6,2,0};
-    uint8_t bmSatLeft[]={0,20,21,21,31,21,20,20};
-    uint8_t bmSatright[]= {0,5,21,21,31,21,5,5};
-    uint8_t bmhand[]= {4,14,30,31,31,31,14,14};
-    uint8_t bmCheck[] = {0,1,3,22,28,8,0,0};
-    uint8_t bmXXX[] = {0,27,14,4,12,27,0,0};
 
-    uint8_t bmHGempty[] = { 31,17,10,4,10,17,31,0};
-	uint8_t bmHGfilling[] = { 31,17,10,4,14,31,31,0};
-	uint8_t bmHGFull[] = {31,31,14,4,14,31,31,0};
-	uint8_t bmHPacOpen[] = {14,31,28,24,28,31,14,0};
-	uint8_t bmHPacClosed[] = {14,31,31,31,31,31,14,0};
+    /// bank 0
+    //uint8_t bmLeft[]= {8,12,10,9,10,12,8,0};
+    //uint8_t bmMiddle[]={0,0,31,14,4,14,31,0};
+    //uint8_t bmRight[]={2,6,10,18,10,6,2,0};
+    //uint8_t bmSatLeft[]={0,20,21,21,31,21,20,20};
+    //uint8_t bmSatright[]= {0,5,21,21,31,21,5,5};
+    //uint8_t bmhand[]= {4,14,30,31,31,31,14,14};
+    //uint8_t bmCheck[] = {0,1,3,22,28,8,0,0};
+    //uint8_t bmXXX[] = {0,27,14,4,12,27,0,0};
+    vector<char>vbmLeft= {8,12,10,9,10,12,8,0};
+    vector<char>vbmMiddle={0,0,31,14,4,14,31,0};
+    vector<char>vbmRight={2,6,10,18,10,6,2,0};
+    vector<char>vbmSatLeft={0,20,21,21,31,21,20,20};
+    vector<char>vbmSatright= {0,5,21,21,31,21,5,5};
+    vector<char>vbmhand= {4,14,30,31,31,31,14,14};
+    vector<char>vbmCheck = {0,1,3,22,28,8,0,0};
+    vector<char>vbmXXX = {0,27,14,4,12,27,0,0};
 
-    lcd_store_custom_bitmap(1, bmLeft); // store
-    lcd_store_custom_bitmap(2, bmMiddle); // store
-    lcd_store_custom_bitmap(3, bmRight); // store
-    lcd_store_custom_bitmap(4, bmSatLeft); // store
-    lcd_store_custom_bitmap(5, bmSatright); // store
+    /// bank 0
+    array<char,8>abmLeft= {8,12,10,9,10,12,8,0};
+    array<char,8>abmMiddle={0,0,31,14,4,14,31,0};
+    array<char,8>abmRight={2,6,10,18,10,6,2,0};
+    array<char,8>abmSatLeft={0,20,21,21,31,21,20,20};
+    array<char,8>abmSatright= {0,5,21,21,31,21,5,5};
+    array<char,8>abmHGempty = { 31,17,10,4,10,17,31,0};
+    array<char,8>abmHGfilling = { 31,17,10,4,14,31,31,0};
+    array<char,8>abmHGFull = {31,31,14,4,14,31,31,0};
+
+    /// bank 1
+    array<char,8>abmToRight = {0,20,22,23,22,20,0,0};
+	array<char,8>abmToLeft = {0,5,13,29,13,5,0,0};
+	array<char,8>abmToUp = {0,0,4,14,31,0,31,0};
+	array<char,8>abmToDown = {31,0,31,14,4,0,0,0};
+    array<char,8>abmHPacOpen = {14,31,28,24,28,31,14,0};
+    array<char,8>abmHPacClosed = {14,31,31,31,31,31,14,0};
+    array<char,8>abmhand= {4,14,30,31,31,31,14,14};
+    array<char,8>abmCheck = {0,1,3,22,28,8,0,0};
+
+    /// bank 2
+    array<char,8>abmXXX = {0,27,14,4,12,27,0,0};
+
+
+    //uint8_t bmHGempty[] = { 31,17,10,4,10,17,31,0};
+	//uint8_t bmHGfilling[] = { 31,17,10,4,14,31,31,0};
+	//uint8_t bmHGFull[] = {31,31,14,4,14,31,31,0};
+	//uint8_t bmHPacOpen[] = {14,31,28,24,28,31,14,0};
+	//uint8_t bmHPacClosed[] = {14,31,31,31,31,31,14,0};
+	//uint8_t bmToRight[] = {0,20,22,23,22,20,0,0};
+	//uint8_t bmToLeft[] = {0,5,13,29,13,5,0,0};
+	//uint8_t bmToUp[] = {0,0,4,14,31,0,31,0};
+	//uint8_t bmToDown[] = {31,0,31,14,4,0,0,0};
+    vector<char>vbmHGempty = { 31,17,10,4,10,17,31,0};
+    vector<char>vbmHGfilling = { 31,17,10,4,14,31,31,0};
+    vector<char>vbmHGFull = {31,31,14,4,14,31,31,0};
+    vector<char>vbmHPacOpen = {14,31,28,24,28,31,14,0};
+    vector<char>vbmHPacClosed = {14,31,31,31,31,31,14,0};
+    vector<char>vbmToRight = {0,20,22,23,22,20,0,0};
+	vector<char>vbmToLeft = {0,5,13,29,13,5,0,0};
+	vector<char>vbmToUp = {0,0,4,14,31,0,31,0};
+
+	/// bank n
+	vector<char>vbmToDown = {31,0,31,14,4,0,0,0};
+
+
+	//lcd_store_custom_bitmap(1, vbmToRight); // store
+	//lcd_store_custom_bitmap(2, vbmToLeft); // stor
+
+
+    //lcd_store_custom_bitmap(1, bmLeft); // store
+    //lcd_store_custom_bitmap(2, bmMiddle); // store
+    //lcd_store_custom_bitmap(3, vbmRight); // store
+    //lcd_store_custom_bitmap(4, vbmSatLeft); // store
+    //lcd_store_custom_bitmap(5, vbmSatright); // store
     //lcd_store_custom_bitmap(6, bmhand); // store
     //lcd_store_custom_bitmap(7, bmCheck); // store
     //lcd_store_custom_bitmap(0, bmXXX); // store
-    lcd_store_custom_bitmap(6, bmHGempty); // store
-    lcd_store_custom_bitmap(7, bmHGfilling); // store
-    lcd_store_custom_bitmap(0, bmHGFull); // store
+
+    //lcd_store_custom_bitmap(6, vbmHGempty); // store
+    //lcd_store_custom_bitmap(7, vbmHGfilling); // store
+    //lcd_store_custom_bitmap(0, vbmHGFull); // store
+
+    //vector<char>test = {'a', 'b', 'c', 'd', 'e'};
+    //std::vector<std::vector<char> > bank0;
+    bankX.push_back(std::vector<char>(vbmToRight));
+    bankX.push_back(std::vector<char>(vbmToLeft));
+    bankX.push_back(std::vector<char>(vbmToUp));
+    bankX.push_back(std::vector<char>(vbmToDown));
+    bankX.push_back(std::vector<char>(vbmSatLeft));
+    lcd_store_custom_bitmap(2, bankX[2]); // store
+    //vector<array<char,8>> var(8);
+    //array<char,8>arrTL = {0,5,13,29,13,5,0,0};
+    //var[0]=arrTL;
+
+    bank0=
+    {
+        {abmLeft},
+        {abmMiddle},
+        {abmRight},
+        {abmSatLeft},
+        {abmSatright},
+        {abmHGempty},
+        {abmHGfilling},
+        {abmHGFull},
+    };
+
+    bank1=
+    {
+        {abmToRight},
+        {abmToLeft},
+        {abmToUp},
+        {abmToDown},
+        {abmHPacOpen},
+        {abmHPacClosed},
+        {abmhand},
+        {abmCheck},
+
+    };
+
+    //vector<std::array<char,8>>::const_iterator pos;
+    //for(pos = bank0.begin(); pos!=bank0.end(); ++pos)
+    for(int i=0; i<8; i++)
+    {
+        lcd_store_custom_bitmap((i+1), bank0[i]); // store
+    }
+
 
     //lcd_send_command(LCD_RETURNHOME);
     lcd_home();
@@ -664,7 +786,7 @@ uint8_t lcddisplay::flip(uint8_t data)
 
     return mirror;
 }
-
+/*************************** has been TEMPALTIZED
 void lcddisplay::lcd_store_custom_bitmap(uint8_t location, uint8_t bitmap[])
 {
     location &= 0x7; // we only have 8 locations 0-7
@@ -675,6 +797,7 @@ void lcddisplay::lcd_store_custom_bitmap(uint8_t location, uint8_t bitmap[])
         lcd_send_data(bitmap[i]);
     }
 }
+******************************************/
 
 /// ********************* WRITE ********************
 // these 3 hwrite seem to be needed so the template is not confused

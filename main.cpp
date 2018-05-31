@@ -1,9 +1,9 @@
-#include <iostream>
-#include <chrono>		//chrono::milliseconds(1000); need scope chrono
-#include <thread>		//for chrono sleep this_thread::sleep_for(chrono::seconds(1));
+//#include <iostream>
+//#include <chrono>		//chrono::milliseconds(1000); need scope chrono
+//#include <thread>		//for chrono sleep this_thread::sleep_for(chrono::seconds(1));
 #include "mylcd.h"
 #include "SPI.h"
-#include <vector>
+//#include <vector>
 #include "pitime.h"
 
 using namespace std;
@@ -42,10 +42,25 @@ int main()
     //myBus.SPI_write_reg(0x80);     // ==== TESTING
     //myBus.~SPIBus();
 
+    //lcddisplay theLCD;      /// causes segfault if here
+
     /// NIST
-    char* NISTbuffer;
-	NISTbuffer = new char[100];
-    buf_pitime(NISTbuffer);
+    char* NISTbuffer = new char[100];
+	char test1[100];
+
+	lcddisplay theLCD;      /// ok if here but why???
+    int size_test = buf_pitime(NISTbuffer);
+
+
+
+    cout <<"===return size is: "<<size_test<<endl;
+    if(size_test == 0)
+    {
+        cout<<"NIST no data,\nsize is "<<endl;
+        //theLCD.lcd_write("NIST no data,\nsize is ");
+        //theLCD<<size_test;
+        return 0;
+    }
 
     vector<char> vecnist(100);
 	strcpy(&vecnist[0], NISTbuffer);	// STD reference page 278
@@ -63,9 +78,9 @@ int main()
 	cout << line_3 << endl;
 	cout << mynist << endl;
 
-	lcddisplay theLCD;
-    this_thread::sleep_for(chrono::seconds(1));
 
+    //lcddisplay theLCD;
+    this_thread::sleep_for(chrono::seconds(1));
     theLCD.lcd_clear();
 
  	theLCD.lcd_set_cursor_address(0x00);
@@ -119,6 +134,28 @@ int main()
     theLCD<<bmp<<bmp1;
     theLCD<<LeftBM<<MiddleBM<<RightBM;
     this_thread::sleep_for(chrono::seconds(1));
+
+    theLCD.lcd_clear();
+    theLCD.lcd_set_cursor_address(0);
+	theLCD<<"insertor check 2\n";
+	theLCD<<SatLeftBM<<SatRightBM<<LeftBM<<MiddleBM<<RightBM<<HourGlassEmptyBM<<HourGlassFillingBM<<HourGlassFullBM<<"\n";
+	this_thread::sleep_for(chrono::seconds(2));
+
+    theLCD.lcd_clear();
+    theLCD.lcd_set_cursor_address(0);
+	theLCD<<"load bitmaps 1";
+	theLCD.load_bmp_bank(1);
+	theLCD.lcd_set_cursor_address(0x40);
+	theLCD<<ToRightBM<<ToLeftBM
+        <<ToUpBM<<ToDownBM
+        <<PacOpenBM<<PacClosedBM<<HandBM<<CheckBM;
+	this_thread::sleep_for(chrono::seconds(1));
+	theLCD.load_bmp_bank(0);
+	theLCD.lcd_set_cursor_address(0x54);
+	theLCD<<SatLeftBM<<SatRightBM
+        <<LeftBM<<MiddleBM<<RightBM
+        <<HourGlassEmptyBM<<HourGlassFillingBM<<HourGlassFullBM;
+	this_thread::sleep_for(chrono::seconds(1));
 
     return 0;
 }
